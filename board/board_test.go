@@ -5,6 +5,14 @@ import (
 	"testing"
 )
 
+func TestEquals(t *testing.T) {
+	b1 := New()
+	b2 := New()
+	if !b1.Equals(b2) {
+		t.Error()
+	}
+}
+
 func TestKnightMoves(t *testing.T) {
 	b := New()
 	bCopy := *b

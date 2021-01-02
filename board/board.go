@@ -22,6 +22,18 @@ func New() *board {
 	return b
 }
 
+// two boards are equal if they have exactly the same piece positions
+func (b1 *board) Equals(b2 *board) bool {
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			if b1.positions[i][j].Type != b2.positions[i][j].Type || b1.positions[i][j].Color != b2.positions[i][j].Color {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // execute a series of moves
 func (b *board) Execute(move ...move) {
 	for _, v := range move {
