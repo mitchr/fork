@@ -13,15 +13,18 @@ func (p Piece) String() string {
 	return p.Color.String() + " " + p.Type.String()
 }
 
+func (p1 Piece) Equals(p2 Piece) bool {
+	return p1.Color == p2.Color && p1.Type == p2.Type
+}
+
 type pieceType byte
 
 func (p pieceType) String() string {
-	return [...]string{"Null", "Pawn", "Bishop", "Knight", "Rook", "Queen", "King"}[p]
+	return [...]string{"Pawn", "Bishop", "Knight", "Rook", "Queen", "King"}[p]
 }
 
 const (
-	Null pieceType = iota // no type (no piece at this square)
-	Pawn
+	Pawn pieceType = iota
 	Bishop
 	Knight
 	Rook
@@ -32,15 +35,12 @@ const (
 type Color byte
 
 const (
-	Blank Color = iota // no color (no piece at this square)
-	White
+	White Color = iota
 	Black
 )
 
 func (c Color) String() string {
-	if c == 0 {
-		return "Blank"
-	} else if c == 1 {
+	if c == White {
 		return "White"
 	} else {
 		return "Black"

@@ -26,7 +26,11 @@ func New() *board {
 func (b1 *board) Equals(b2 *board) bool {
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
-			if b1.positions[i][j].Type != b2.positions[i][j].Type || b1.positions[i][j].Color != b2.positions[i][j].Color {
+			b1Piece := b1.positions[i][j]
+			b2Piece := b2.positions[i][j]
+			if b1Piece == nil && b2Piece == nil {
+				continue
+			} else if !b1Piece.Equals(*b2Piece) {
 				return false
 			}
 		}
@@ -67,13 +71,13 @@ func (b *board) findPiece(file rune, rank int) *piece.Piece {
 // does not do any move verification, so be careful
 func (b *board) movePiece(f1 rune, r1 int, f2 rune, r2 int) {
 	p := b.findPiece(f1, r1)
-	if p == nil || p.Type == piece.Null { // out of bounds or no piece at position
+	if p == nil { // out of bounds or no piece at position
 		return
 	}
 
 	// leave p's position empty
 	i, j := b.fileAndRankToMatrix(f1, r1)
-	b.positions[i][j] = &piece.Piece{}
+	b.positions[i][j] = nil
 	// move p to new position
 	i, j = b.fileAndRankToMatrix(f2, r2)
 	b.positions[i][j] = p
@@ -82,7 +86,7 @@ func (b *board) movePiece(f1 rune, r1 int, f2 rune, r2 int) {
 // returns a list of possible moves for a piece at file f and rank r
 func (b *board) possibleMoves(f rune, r int) []move {
 	p := b.findPiece(f, r)
-	if p == nil || p.Type == piece.Null { // no piece found for this position
+	if p == nil { // no piece found for this position
 		return nil
 	}
 
@@ -93,10 +97,10 @@ func (b *board) possibleMoves(f rune, r int) []move {
 	case piece.Pawn:
 		switch p.Color {
 		case piece.White:
-			if o := b.findPiece(f, r+1); o != nil && o.Type == piece.Null { // can move 1 forward if unobstructed
+			if o := b.findPiece(f, r+1); o != nil { // can move 1 forward if unobstructed
 				moves = append(moves, func(b *board) { b.movePiece(f, r, f, r+1) })
 			}
-			if r == 2 && b.findPiece(f, r+2).Type == piece.Null { // if a white pawn is still on the 2 rank, it can also move 2 ranks forward
+			if r == 2 && b.findPiece(f, r+2) != nil { // if a white pawn is still on the 2 rank, it can also move 2 ranks forward
 				// TODO: should also enable some kind of en-passant flag here!
 				moves = append(moves, func(b *board) { b.movePiece(f, r, f, r+2) })
 			}
@@ -107,10 +111,10 @@ func (b *board) possibleMoves(f rune, r int) []move {
 				moves = append(moves, func(b *board) { b.movePiece(f, r, f-1, r+1) })
 			}
 		case piece.Black:
-			if o := b.findPiece(f, r-1); o != nil && o.Type == piece.Null {
+			if o := b.findPiece(f, r-1); o != nil {
 				moves = append(moves, func(b *board) { b.movePiece(f, r, f, r-1) })
 			}
-			if r == 7 && b.findPiece(f, r-2).Type == piece.Null {
+			if r == 7 && b.findPiece(f, r-2) != nil {
 				// TODO: should also enable some kind of en-passant flag here!
 				moves = append(moves, func(b *board) { b.movePiece(f, r, f, r-2) })
 			}
@@ -132,7 +136,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for file, rank := f+1, r+1; file <= 'h' && rank <= 8; file, rank = file+1, rank+1 {
 				o := b.findPiece(file, rank)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
@@ -148,7 +152,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for file, rank := f+1, r-1; file <= 'h' && rank >= 1; file, rank = file+1, rank-1 {
 				o := b.findPiece(file, rank)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
@@ -164,7 +168,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for file, rank := f-1, r+1; file >= 'a' && rank <= 8; file, rank = file-1, rank+1 {
 				o := b.findPiece(file, rank)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
@@ -180,7 +184,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for file, rank := f-1, r-1; file >= 'a' && rank >= 1; file, rank = file-1, rank-1 {
 				o := b.findPiece(file, rank)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, file, rank) }
@@ -220,7 +224,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			{f + 1, r - 2}, //vv->-
 		}
 		for _, v := range locations {
-			if o := b.findPiece(v[0].(rune), v[1].(int)); o != nil && (o.Type == piece.Null || o.Color != b.currentTurn) {
+			if o := b.findPiece(v[0].(rune), v[1].(int)); o != nil {
 				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0].(rune), v[1].(int)) })
 			}
 		}
@@ -236,7 +240,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			for i := r + 1; i <= 8; i++ {
 				o := b.findPiece(f, i)
 				// if there's an empty space here, then we can move there
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, f, i) }
 				} else if o.Color != b.currentTurn {
 					// if we encounter an opponent piece, then we can move there, but we
@@ -255,7 +259,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for i := r - 1; i >= 1; i-- {
 				o := b.findPiece(f, i)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, f, i) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, f, i) }
@@ -271,7 +275,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for j := f - 1; j >= 'a'; j-- {
 				o := b.findPiece(j, r)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, j, r) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, j, r) }
@@ -287,7 +291,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			defer wg.Done()
 			for j := f + 1; j <= 'h'; j++ {
 				o := b.findPiece(j, r)
-				if o.Type == piece.Null {
+				if o == nil {
 					c <- func(b *board) { b.movePiece(f, r, j, r) }
 				} else if o.Color != b.currentTurn {
 					c <- func(b *board) { b.movePiece(f, r, j, r) }
@@ -330,7 +334,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			{f, r + 1},     // ^
 		}
 		for _, v := range locations {
-			if o := b.findPiece(v[0].(rune), v[1].(int)); o != nil && (o.Type == piece.Null || o.Color != b.currentTurn) {
+			if o := b.findPiece(v[0].(rune), v[1].(int)); o != nil {
 				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0].(rune), v[1].(int)) })
 			}
 		}
@@ -366,10 +370,9 @@ func (b *board) setup() {
 		piece.New(piece.Black, piece.Pawn),
 		piece.New(piece.Black, piece.Pawn)}
 
-	// fill all blank spaces with a null piece
 	for i := 2; i < 6; i++ {
 		for j := 0; j < 8; j++ {
-			b.positions[i][j] = &piece.Piece{}
+			b.positions[i][j] = nil
 		}
 	}
 
@@ -406,7 +409,7 @@ func (b board) String() string {
 		str += fmt.Sprintf("%v |", 8-i)
 		for j := 0; j < 8; j++ {
 			p := b.positions[i][j]
-			if p.Type == piece.Null {
+			if p == nil {
 				str += "* "
 			} else if p.Type == piece.Knight { // K is already taken :/
 				str += "N "
