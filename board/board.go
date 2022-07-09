@@ -52,13 +52,13 @@ func (b *board) Execute(move ...move) {
 }
 
 // returns board i,j coordinates from file,rank
-func (b *board) fileAndRankToMatrix(file rune, rank int) (int, int) {
+func (b *board) fileAndRankToMatrix(file int, rank int) (int, int) {
 	return 8 - rank, int(file - 'a')
 }
 
 // finds the piece at file i and rank j (i.e. findPiece('c', 4))
 // returns nil if no piece was found at that file and rank, or if file and rank are illformed
-func (b *board) findPiece(file rune, rank int) *piece.Piece {
+func (b *board) findPiece(file int, rank int) *piece.Piece {
 	// make sure we aren't accessing out of bounds
 	if file > 'h' || file < 'a' || rank > 8 || rank < 1 {
 		return nil
@@ -69,7 +69,7 @@ func (b *board) findPiece(file rune, rank int) *piece.Piece {
 // move the piece at f1,r1 to f2,r2
 // if an opponent piece is at f2,r2, it will be captured
 // does not do any move verification, so be careful
-func (b *board) movePiece(f1 rune, r1 int, f2 rune, r2 int) {
+func (b *board) movePiece(f1 int, r1 int, f2 int, r2 int) {
 	p := b.findPiece(f1, r1)
 	if p == nil { // out of bounds or no piece at position
 		return
@@ -84,7 +84,7 @@ func (b *board) movePiece(f1 rune, r1 int, f2 rune, r2 int) {
 }
 
 // returns a list of possible moves for a piece at file f and rank r
-func (b *board) possibleMoves(f rune, r int) []move {
+func (b *board) possibleMoves(f int, r int) []move {
 	p := b.findPiece(f, r)
 	if p == nil { // no piece found for this position
 		return nil
@@ -213,7 +213,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 	case piece.Knight:
 		// the notations in the comments here are referring to White, but it doesn't matter because every Knight can always make the same 8 moves
 		// if the spot is empty or a color opposite of the one whose current turn it is, that piece can move there
-		locations := [][]interface{}{
+		locations := [][]int{
 			{f + 1, r + 2}, //^^->
 			{f - 1, r + 2}, //^^<-
 			{f - 2, r + 1}, //<-<-^
@@ -224,8 +224,8 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			{f + 1, r - 2}, //vv->-
 		}
 		for _, v := range locations {
-			if o := b.findPiece(v[0].(rune), v[1].(int)); o != nil {
-				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0].(rune), v[1].(int)) })
+			if o := b.findPiece(v[0], v[1]); o != nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0], v[1]) })
 			}
 		}
 
@@ -323,7 +323,7 @@ func (b *board) possibleMoves(f rune, r int) []move {
 		p.Type = piece.Queen
 
 	case piece.King:
-		locations := [][]interface{}{
+		locations := [][]int{
 			{f - 1, r + 1}, // <-^
 			{f - 1, r},     // <-
 			{f - 1, r - 1}, // <-v
@@ -334,8 +334,8 @@ func (b *board) possibleMoves(f rune, r int) []move {
 			{f, r + 1},     // ^
 		}
 		for _, v := range locations {
-			if o := b.findPiece(v[0].(rune), v[1].(int)); o != nil {
-				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0].(rune), v[1].(int)) })
+			if o := b.findPiece(v[0], v[1]); o != nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0], v[1]) })
 			}
 		}
 	}
