@@ -2,7 +2,6 @@ package board
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/mitchr/fork/piece"
 )
@@ -127,88 +126,57 @@ func (b *board) possibleMoves(f int, r int) []move {
 		}
 
 	case piece.Bishop:
-		var wg sync.WaitGroup
-		wg.Add(4)
-		c := make(chan move)
-
 		// right-up
-		go func(c chan<- move) {
-			defer wg.Done()
-			for file, rank := f+1, r+1; file <= 'h' && rank <= 8; file, rank = file+1, rank+1 {
-				o := b.findPiece(file, rank)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for file, rank := f+1, r+1; file <= 'h' && rank <= 8; file, rank = file+1, rank+1 {
+			o := b.findPiece(file, rank)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
+		}
 
 		// right-down
-		go func(c chan<- move) {
-			defer wg.Done()
-			for file, rank := f+1, r-1; file <= 'h' && rank >= 1; file, rank = file+1, rank-1 {
-				o := b.findPiece(file, rank)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for file, rank := f+1, r-1; file <= 'h' && rank >= 1; file, rank = file+1, rank-1 {
+			o := b.findPiece(file, rank)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
+		}
 
 		// left-up
-		go func(c chan<- move) {
-			defer wg.Done()
-			for file, rank := f-1, r+1; file >= 'a' && rank <= 8; file, rank = file-1, rank+1 {
-				o := b.findPiece(file, rank)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for file, rank := f-1, r+1; file >= 'a' && rank <= 8; file, rank = file-1, rank+1 {
+			o := b.findPiece(file, rank)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
+		}
 
 		// left-down
-		go func(c chan<- move) {
-			defer wg.Done()
-			for file, rank := f-1, r-1; file >= 'a' && rank >= 1; file, rank = file-1, rank-1 {
-				o := b.findPiece(file, rank)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, file, rank) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for file, rank := f-1, r-1; file >= 'a' && rank >= 1; file, rank = file-1, rank-1 {
+			o := b.findPiece(file, rank)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, file, rank) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
-
-		// reader that consume all moves from channel
-		go func(c <-chan move) {
-			for m := range c {
-				moves = append(moves, m)
-			}
-		}(c)
-		// wait for all goroutine to finish
-		wg.Wait()
-
-		// by closing c here, we can remove the reader goroutine from the call space
-		// If we neglect to close c, there will be a continually blocking goroutine
-		// in the background which leaks memory depending on how many times this
-		// particular branch runs
-		close(c)
+		}
 
 	case piece.Knight:
 		// the notations in the comments here are referring to White, but it doesn't matter because every Knight can always make the same 8 moves
@@ -224,94 +192,67 @@ func (b *board) possibleMoves(f int, r int) []move {
 			{f + 1, r - 2}, //vv->-
 		}
 		for _, v := range locations {
-			if o := b.findPiece(v[0], v[1]); o != nil {
+			if o := b.findPiece(v[0], v[1]); o == nil || o.Color != b.currentTurn {
 				moves = append(moves, func(b *board) { b.movePiece(f, r, v[0], v[1]) })
 			}
 		}
 
 	case piece.Rook: // adopts same goroutine pattern as Bishop
-		var wg sync.WaitGroup
-		wg.Add(4)
-		c := make(chan move)
-
 		// check file above
-		go func(c chan<- move) {
-			defer wg.Done()
-			for i := r + 1; i <= 8; i++ {
-				o := b.findPiece(f, i)
-				// if there's an empty space here, then we can move there
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, f, i) }
-				} else if o.Color != b.currentTurn {
-					// if we encounter an opponent piece, then we can move there, but we
-					// should not look for other positions in this direction
-					c <- func(b *board) { b.movePiece(f, r, f, i) }
-					break
-				} else if o.Color == b.currentTurn {
-					// if we encounter the same colored piece, then we can stop looking
-					break
-				}
+		for i := r + 1; i <= 8; i++ {
+			o := b.findPiece(f, i)
+			// if there's an empty space here, then we can move there
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, f, i) })
+			} else if o.Color != b.currentTurn {
+				// if we encounter an opponent piece, then we can move there, but we
+				// should not look for other positions in this direction
+				moves = append(moves, func(b *board) { b.movePiece(f, r, f, i) })
+				break
+			} else if o.Color == b.currentTurn {
+				// if we encounter the same colored piece, then we can stop looking
+				break
 			}
-		}(c)
+		}
 
 		// check file below
-		go func(c chan<- move) {
-			defer wg.Done()
-			for i := r - 1; i >= 1; i-- {
-				o := b.findPiece(f, i)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, f, i) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, f, i) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for i := r - 1; i >= 1; i-- {
+			o := b.findPiece(f, i)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, f, i) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, f, i) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
+		}
 
 		// check rank left
-		go func(c chan<- move) {
-			defer wg.Done()
-			for j := f - 1; j >= 'a'; j-- {
-				o := b.findPiece(j, r)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, j, r) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, j, r) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for j := f - 1; j >= 'a'; j-- {
+			o := b.findPiece(j, r)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, j, r) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, j, r) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
+		}
 
 		// check rank right
-		go func(c chan<- move) {
-			defer wg.Done()
-			for j := f + 1; j <= 'h'; j++ {
-				o := b.findPiece(j, r)
-				if o == nil {
-					c <- func(b *board) { b.movePiece(f, r, j, r) }
-				} else if o.Color != b.currentTurn {
-					c <- func(b *board) { b.movePiece(f, r, j, r) }
-					break
-				} else if o.Color == b.currentTurn {
-					break
-				}
+		for j := f + 1; j <= 'h'; j++ {
+			o := b.findPiece(j, r)
+			if o == nil {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, j, r) })
+			} else if o.Color != b.currentTurn {
+				moves = append(moves, func(b *board) { b.movePiece(f, r, j, r) })
+				break
+			} else if o.Color == b.currentTurn {
+				break
 			}
-		}(c)
-
-		go func(c <-chan move) {
-			for m := range c {
-				moves = append(moves, m)
-			}
-		}(c)
-
-		wg.Wait()
-
-		close(c)
-
+		}
 	case piece.Queen: // a queen is a combination of a bishop and a rook
 		// mutate p to look like a bishop
 		p.Type = piece.Bishop
